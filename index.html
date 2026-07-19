@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Заполнение документов ПСБ</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Подключаем библиотеки -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/docx/8.2.2/docx.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <div class="logo-section">
+                <h1>ПСБ</h1>
+                <span class="subtitle">Система заполнения документов</span>
+            </div>
+        </header>
+
+        <main class="main-content">
+            <!-- Шаг 1: Загрузка PDF -->
+            <section class="step">
+                <h2>1. Загрузка документа с данными</h2>
+                <div class="upload-container">
+                    <div class="upload-area" id="pdfUploadArea">
+                        <input type="file" id="pdfFile" accept=".pdf" style="display: none;">
+                        <div class="upload-content">
+                            <div class="upload-icon">📄</div>
+                            <p>Выберите PDF файл с данными</p>
+                            <span class="upload-hint">или перетащите файл сюда</span>
+                        </div>
+                    </div>
+                    <div id="pdfStatus" class="status"></div>
+                </div>
+            </section>
+
+            <!-- Шаг 2: Выбор шаблона -->
+            <section class="step">
+                <h2>2. Выбор типа документа</h2>
+                <div class="template-grid">
+                    <button class="template-btn" data-template="application">
+                        <span class="template-icon">📋</span>
+                        Заявление на обслуживание
+                    </button>
+                    <button class="template-btn" data-template="questionnaire">
+                        <span class="template-icon">📝</span>
+                        Анкета клиента
+                    </button>
+                    <button class="template-btn" data-template="agreement">
+                        <span class="template-icon">📄</span>
+                        Договор обслуживания
+                    </button>
+                </div>
+            </section>
+
+            <!-- Шаг 3: Проверка данных -->
+            <section class="step" id="dataPreview" style="display: none;">
+                <h2>3. Проверка извлеченных данных</h2>
+                <div class="data-form" id="dataForm">
+                    <!-- Здесь будут поля для редактирования -->
+                </div>
+                <div class="action-buttons">
+                    <button id="fillDocument" class="btn-primary">
+                        Сформировать документ
+                    </button>
+                </div>
+            </section>
+
+            <!-- Результат -->
+            <section class="step" id="result" style="display: none;">
+                <h2>4. Готовый документ</h2>
+                <div class="result-content">
+                    <div class="success-message">
+                        <span class="success-icon">✅</span>
+                        <p>Документ успешно сформирован</p>
+                    </div>
+                    <button id="downloadBtn" class="btn-download">
+                        Скачать документ
+                    </button>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
