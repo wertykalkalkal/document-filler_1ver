@@ -1,57 +1,91 @@
 // Глобальные переменные
 let extractedData = {};
-let selectedTemplate = '';
 let generatedDocument = null;
+let userEmail = '';
 
-// Полный список полей для анкеты
-const FORM_FIELDS = {
-    // Персональные данные
-    lastName: { label: 'Фамилия', required: true, type: 'text' },
-    firstName: { label: 'Имя', required: true, type: 'text' },
-    middleName: { label: 'Отчество', required: false, type: 'text' },
-    birthDate: { label: 'Дата рождения', required: true, type: 'date' },
-    birthPlace: { label: 'Место рождения', required: true, type: 'text' },
+// Поля для анкеты юридического лица
+const COMPANY_FIELDS = {
+    // Основная информация
+    fullName: { label: 'Полное наименование организации', required: true, type: 'text' },
+    shortName: { label: 'Сокращенное наименование', required: false, type: 'text' },
+    inn: { label: 'ИНН', required: true, type: 'text' },
+    kpp: { label: 'КПП', required: true, type: 'text' },
+    ogrn: { label: 'ОГРН', required: true, type: 'text' },
+    okpo: { label: 'ОКПО', required: false, type: 'text' },
+    okved: { label: 'ОКВЭД (основной)', required: false, type: 'text' },
     
-    // Паспортные данные
-    passportSeries: { label: 'Серия паспорта', required: true, type: 'text' },
-    passportNumber: { label: 'Номер паспорта', required: true, type: 'text' },
-    passportDate: { label: 'Дата выдачи паспорта', required: true, type: 'date' },
-    passportIssuer: { label: 'Кем выдан паспорт', required: true, type: 'text' },
-    passportCode: { label: 'Код подразделения', required: true, type: 'text' },
+    // Адреса
+    legalAddress: { label: 'Юридический адрес', required: true, type: 'text' },
+    actualAddress: { label: 'Фактический адрес', required: false, type: 'text' },
+    mailingAddress: { label: 'Почтовый адрес', required: false, type: 'text' },
     
     // Контактная информация
     phone: { label: 'Телефон', required: true, type: 'tel' },
+    fax: { label: 'Факс', required: false, type: 'tel' },
     email: { label: 'Email', required: false, type: 'email' },
+    website: { label: 'Веб-сайт', required: false, type: 'url' },
     
-    // Адрес
-    registrationAddress: { label: 'Адрес регистрации', required: true, type: 'text' },
-    actualAddress: { label: 'Адрес фактического проживания', required: false, type: 'text' },
+    // Руководство
+    directorPosition: { label: 'Должность руководителя', required: true, type: 'text' },
+    directorName: { label: 'ФИО руководителя', required: true, type: 'text' },
+    directorDocument: { label: 'Документ-основание полномочий руководителя', required: false, type: 'text' },
     
-    // Дополнительная информация
-    inn: { label: 'ИНН', required: false, type: 'text' },
-    snils: { label: 'СНИЛС', required: false, type: 'text' },
-    education: { label: 'Образование', required: false, type: 'text' },
-    maritalStatus: { label: 'Семейное положение', required: false, type: 'text' },
-    citizenship: { label: 'Гражданство', required: true, type: 'text' },
+    // Главный бухгалтер
+    accountantName: { label: 'ФИО главного бухгалтера', required: false, type: 'text' },
     
-    // Трудовая деятельность
-    workplace: { label: 'Место работы', required: false, type: 'text' },
-    position: { label: 'Должность', required: false, type: 'text' },
-    workExperience: { label: 'Стаж работы', required: false, type: 'text' },
-    monthlyIncome: { label: 'Ежемесячный доход', required: false, type: 'number' }
+    // Регистрационные данные
+    registrationDate: { label: 'Дата государственной регистрации', required: false, type: 'date' },
+    registrationAuthority: { label: 'Орган, осуществивший регистрацию', required: false, type: 'text' },
+    
+    // Финансовая информация
+    authorizedCapital: { label: 'Уставный капитал (руб.)', required: false, type: 'number' },
+    employeesCount: { label: 'Количество сотрудников', required: false, type: 'number' },
+    
+    // Банковские реквизиты (если есть)
+    bankName: { label: 'Наименование банка', required: false, type: 'text' },
+    currentAccount: { label: 'Расчетный счет', required: false, type: 'text' },
+    correspondentAccount: { label: 'Корреспондентский счет', required: false, type: 'text' },
+    bik: { label: 'БИК банка', required: false, type: 'text' }
 };
 
 // Инициализация при загрузке страницы
 document.addEventListener('DOMContentLoaded', function() {
+    updateBankName();
     initializeUpload();
-    initializeTemplates();
     initializeButtons();
 });
+
+// Обновляем название банка
+function updateBankName() {
+    // Обновляем заголовок
+    const header = document.querySelector('.logo-section h1');
+    if (header) {
+        header.textContent = 'Банк Полёт!';
+    }
+    
+    // Обновляем подзаголовок
+    const subtitle = document.querySelector('.subtitle');
+    if (subtitle) {
+        subtitle.textContent = 'Система заполнения анкет юридических лиц';
+    }
+    
+    // Убираем выбор шаблонов, так как у нас только анкета
+    const templateSection = document.querySelector('.step:nth-child(2)');
+    if (templateSection) {
+        templateSection.style.display = 'none';
+    }
+}
 
 // === ЗАГРУЗКА И ОБРАБОТКА PDF ===
 function initializeUpload() {
     const uploadArea = document.getElementById('pdfUploadArea');
     const fileInput = document.getElementById('pdfFile');
+
+    // Обновляем текст загрузки
+    const uploadText = uploadArea.querySelector('p');
+    if (uploadText) {
+        uploadText.textContent = 'Выберите PDF с карточкой компании';
+    }
 
     // Клик по области загрузки
     uploadArea.addEventListener('click', () => fileInput.click());
@@ -82,14 +116,14 @@ function initializeUpload() {
         if (files.length > 0 && files[0].type === 'application/pdf') {
             handleFile(files[0]);
         } else {
-            showStatus('Пожалуйста, загрузите PDF файл', 'error');
+            showStatus('Пожалуйста, загрузите PDF файл с карточкой компании', 'error');
         }
     });
 }
 
 // Обработка загруженного файла
 function handleFile(file) {
-    showStatus('Обрабатываем документ...', 'loading');
+    showStatus('Обрабатываем карточку компании...', 'loading');
 
     const reader = new FileReader();
     reader.onload = function(e) {
@@ -97,11 +131,9 @@ function handleFile(file) {
         
         pdfjsLib.getDocument(typedArray).promise.then(function(pdf) {
             extractTextFromPDF(pdf).then(function(text) {
-                extractedData = parseAllFields(text);
-                showStatus('Документ успешно обработан', 'success');
-                if (selectedTemplate) {
-                    showDataForm();
-                }
+                extractedData = parseCompanyData(text);
+                showStatus('Данные компании успешно извлечены', 'success');
+                showDataForm();
             });
         }).catch(function(error) {
             showStatus('Ошибка при чтении PDF: ' + error.message, 'error');
@@ -125,73 +157,99 @@ async function extractTextFromPDF(pdf) {
     return fullText;
 }
 
-// Расширенный парсинг всех полей
-function parseAllFields(text) {
+// Парсинг данных компании из текста
+function parseCompanyData(text) {
     const data = {};
     const cleanText = text.replace(/\s+/g, ' ').trim();
 
-    // ФИО (попытка найти полное ФИО)
-    const fullNameMatch = cleanText.match(/([А-ЯЁ][а-яё]+\s+[А-ЯЁ][а-яё]+\s+[А-ЯЁ][а-яё]+)/);
-    if (fullNameMatch) {
-        const nameParts = fullNameMatch[1].split(' ');
-        data.lastName = nameParts[0];
-        data.firstName = nameParts[1];
-        data.middleName = nameParts[2] || '';
-    }
-
-    // Даты рождения
-    const birthDatePatterns = [
-        /дата\s+рождения[:\s]*(\d{1,2})[.\-\/](\d{1,2})[.\-\/](\d{4})/i,
-        /родился[:\s]*(\d{1,2})[.\-\/](\d{1,2})[.\-\/](\d{4})/i,
-        /родилась[:\s]*(\d{1,2})[.\-\/](\d{1,2})[.\-\/](\d{4})/i
+    // ИНН (основной критерий)
+    const innPatterns = [
+        /ИНН[:\s]*(\d{10})/i,
+        /инн[:\s]*(\d{10})/i,
+        /(\d{10})/g
     ];
     
-    for (const pattern of birthDatePatterns) {
+    for (const pattern of innPatterns) {
         const match = cleanText.match(pattern);
         if (match) {
-            data.birthDate = `${match[3]}-${match[2].padStart(2, '0')}-${match[1].padStart(2, '0')}`;
+            // Проверяем, что это действительно ИНН (10 цифр для юр.лица)
+            const inn = match[1] || match[0];
+            if (inn && inn.length === 10 && /^\d{10}$/.test(inn)) {
+                data.inn = inn;
+                break;
+            }
+        }
+    }
+
+    // КПП
+    const kppPatterns = [
+        /КПП[:\s]*(\d{9})/i,
+        /кпп[:\s]*(\d{9})/i
+    ];
+    
+    for (const pattern of kppPatterns) {
+        const match = cleanText.match(pattern);
+        if (match && match[1].length === 9) {
+            data.kpp = match[1];
             break;
         }
     }
 
-    // Место рождения
-    const birthPlaceMatch = cleanText.match(/место\s+рождения[:\s]*([^,\n\r]+)/i);
-    if (birthPlaceMatch) {
-        data.birthPlace = birthPlaceMatch[1].trim();
-    }
-
-    // Паспортные данные
-    const passportMatch = cleanText.match(/(\d{4})\s*(\d{6})/);
-    if (passportMatch) {
-        data.passportSeries = passportMatch[1];
-        data.passportNumber = passportMatch[2];
-    }
-
-    // Дата выдачи паспорта
-    const passportDateMatch = cleanText.match(/выдан[:\s]*(\d{1,2})[.\-\/](\d{1,2})[.\-\/](\d{4})/i);
-    if (passportDateMatch) {
-        data.passportDate = `${passportDateMatch[3]}-${passportDateMatch[2].padStart(2, '0')}-${passportDateMatch[1].padStart(2, '0')}`;
-    }
-
-    // Кем выдан паспорт
-    const issuerMatch = cleanText.match(/выдан[:\s]*([^,\n\r]+?)(?:\s+(\d{3}-\d{3}))?/i);
-    if (issuerMatch) {
-        data.passportIssuer = issuerMatch[1].trim();
-        if (issuerMatch[2]) {
-            data.passportCode = issuerMatch[2];
+    // ОГРН
+    const ogrnPatterns = [
+        /ОГРН[:\s]*(\d{13})/i,
+        /огрн[:\s]*(\d{13})/i
+    ];
+    
+    for (const pattern of ogrnPatterns) {
+        const match = cleanText.match(pattern);
+        if (match && match[1].length === 13) {
+            data.ogrn = match[1];
+            break;
         }
     }
 
-    // Код подразделения
-    const codeMatch = cleanText.match(/код\s+подразделения[:\s]*(\d{3}-\d{3})/i);
-    if (codeMatch) {
-        data.passportCode = codeMatch[1];
+    // Наименование организации
+    const namePatterns = [
+        /(?:ООО|ЗАО|ОАО|АО|ПАО)\s+"?([^"]+)"?/i,
+        /([А-ЯЁ][А-ЯЁ\s]+(?:ООО|ЗАО|ОАО|АО|ПАО))/i,
+        /наименование[:\s]*([^,\n\r]+)/i,
+        /организация[:\s]*([^,\n\r]+)/i
+    ];
+    
+    for (const pattern of namePatterns) {
+        const match = cleanText.match(pattern);
+        if (match) {
+            data.fullName = match[1].trim().replace(/"/g, '');
+            // Попытаемся создать сокращенное наименование
+            if (data.fullName.includes('ООО')) {
+                data.shortName = data.fullName.replace(/общество с ограниченной ответственностью/i, 'ООО');
+            } else if (data.fullName.includes('АО')) {
+                data.shortName = data.fullName.replace(/акционерное общество/i, 'АО');
+            }
+            break;
+        }
+    }
+
+    // Адрес
+    const addressPatterns = [
+        /(?:юридический\s+)?адрес[:\s]*([^,\n\r]+(?:\d{6})?[^,\n\r]*)/i,
+        /(?:место\s+нахождения)[:\s]*([^,\n\r]+)/i,
+        /адрес[:\s]*([^,\n\r]+)/i
+    ];
+    
+    for (const pattern of addressPatterns) {
+        const match = cleanText.match(pattern);
+        if (match) {
+            data.legalAddress = match[1].trim();
+            break;
+        }
     }
 
     // Телефон
     const phonePatterns = [
         /тел[:\s]*[\+]?[78]?[\s\-]?\(?(\d{3})\)?[\s\-]?(\d{3})[\s\-]?(\d{2})[\s\-]?(\d{2})/i,
-        /моб[:\s]*[\+]?[78]?[\s\-]?\(?(\d{3})\)?[\s\-]?(\d{3})[\s\-]?(\d{2})[\s\-]?(\d{2})/i,
+        /телефон[:\s]*[\+]?[78]?[\s\-]?\(?(\d{3})\)?[\s\-]?(\d{3})[\s\-]?(\d{2})[\s\-]?(\d{2})/i,
         /[\+]?[78][\s\-]?\(?(\d{3})\)?[\s\-]?(\d{3})[\s\-]?(\d{2})[\s\-]?(\d{2})/
     ];
     
@@ -209,39 +267,59 @@ function parseAllFields(text) {
         data.email = emailMatch[1];
     }
 
-    // Адрес регистрации
-    const addressPatterns = [
-        /адрес\s+регистрации[:\s]*([^,\n\r]+)/i,
-        /прописан[:\s]*([^,\n\r]+)/i,
-        /зарегистрирован[:\s]*([^,\n\r]+)/i
+    // Руководитель
+    const directorPatterns = [
+        /(?:генеральный\s+)?директор[:\s]*([А-ЯЁ][а-яё]+\s+[А-ЯЁ][а-яё]+\s+[А-ЯЁ][а-яё]+)/i,
+        /руководитель[:\s]*([А-ЯЁ][а-яё]+\s+[А-ЯЁ][а-яё]+\s+[А-ЯЁ][а-яё]+)/i
     ];
     
-    for (const pattern of addressPatterns) {
+    for (const pattern of directorPatterns) {
         const match = cleanText.match(pattern);
         if (match) {
-            data.registrationAddress = match[1].trim();
+            data.directorName = match[1].trim();
+            data.directorPosition = 'Генеральный директор';
             break;
         }
     }
 
-    // ИНН
-    const innMatch = cleanText.match(/инн[:\s]*(\d{10,12})/i);
-    if (innMatch) {
-        data.inn = innMatch[1];
+    // ОКПО
+    const okpoMatch = cleanText.match(/ОКПО[:\s]*(\d{8,10})/i);
+    if (okpoMatch) {
+        data.okpo = okpoMatch[1];
     }
 
-    // СНИЛС
-    const snilsMatch = cleanText.match(/снилс[:\s]*(\d{3}-\d{3}-\d{3}\s\d{2})/i);
-    if (snilsMatch) {
-        data.snils = snilsMatch[1];
+    // ОКВЭД
+    const okvedMatch = cleanText.match(/ОКВЭД[:\s]*(\d{2}\.\d{2}(?:\.\d{1,2})?)/i);
+    if (okvedMatch) {
+        data.okved = okvedMatch[1];
     }
 
-    // Гражданство (по умолчанию РФ)
-    const citizenshipMatch = cleanText.match(/гражданство[:\s]*([^,\n\r]+)/i);
-    if (citizenshipMatch) {
-        data.citizenship = citizenshipMatch[1].trim();
-    } else {
-        data.citizenship = 'Российская Федерация';
+    // Уставный капитал
+    const capitalPatterns = [
+        /уставный\s+капитал[:\s]*(\d+(?:\s\d+)*)/i,
+        /уставной\s+капитал[:\s]*(\d+(?:\s\d+)*)/i
+    ];
+    
+    for (const pattern of capitalPatterns) {
+        const match = cleanText.match(pattern);
+        if (match) {
+            data.authorizedCapital = match[1].replace(/\s/g, '');
+            break;
+        }
+    }
+
+    // Дата регистрации
+    const regDatePatterns = [
+        /дата\s+регистрации[:\s]*(\d{1,2})[.\-\/](\d{1,2})[.\-\/](\d{4})/i,
+        /зарегистрирован[:\s]*(\d{1,2})[.\-\/](\d{1,2})[.\-\/](\d{4})/i
+    ];
+    
+    for (const pattern of regDatePatterns) {
+        const match = cleanText.match(pattern);
+        if (match) {
+            data.registrationDate = `${match[3]}-${match[2].padStart(2, '0')}-${match[1].padStart(2, '0')}`;
+            break;
+        }
     }
 
     return data;
@@ -254,36 +332,21 @@ function showStatus(message, type) {
     status.className = `status ${type}`;
 }
 
-// === ШАБЛОНЫ ===
-function initializeTemplates() {
-    const templateButtons = document.querySelectorAll('.template-btn');
-    
-    templateButtons.forEach(btn => {
-        btn.addEventListener('click', function() {
-            // Убираем выделение с других кнопок
-            templateButtons.forEach(b => b.classList.remove('selected'));
-            // Выделяем текущую
-            this.classList.add('selected');
-            
-            selectedTemplate = this.dataset.template;
-            
-            // Показываем форму если PDF загружен
-            if (Object.keys(extractedData).length > 0) {
-                showDataForm();
-            }
-        });
-    });
-}
-
-// Показать форму с данными
+// Показать форму с данными компании
 function showDataForm() {
     const preview = document.getElementById('dataPreview');
-    const formContainer = document.getElementById('dataForm');
+    const dataContainer = document.getElementById('dataForm');
+    
+    // Обновляем заголовок секции
+    const sectionTitle = preview.querySelector('h2');
+    if (sectionTitle) {
+        sectionTitle.textContent = '2. Проверьте и дополните данные компании';
+    }
     
     let html = '';
     
-    // Создаем поля для ввода на основе найденных и недостающих данных
-    for (const [fieldName, fieldConfig] of Object.entries(FORM_FIELDS)) {
+    // Создаем поля для ввода
+    for (const [fieldName, fieldConfig] of Object.entries(COMPANY_FIELDS)) {
         const value = extractedData[fieldName] || '';
         const isEmpty = !value;
         const inputClass = isEmpty ? 'field-input empty' : 'field-input';
@@ -309,12 +372,30 @@ function showDataForm() {
             </div>
         `;
     }
+
+    // Добавляем поле для email пользователя
+    html += `
+        <div class="field-group email-section">
+            <label class="field-label" for="userEmail">
+                Ваш email для отправки анкеты*
+            </label>
+            <input 
+                type="email" 
+                id="userEmail" 
+                name="userEmail"
+                class="field-input"
+                placeholder="example@company.com"
+                required
+            >
+            <span class="field-hint">Заполненная анкета будет отправлена на этот адрес</span>
+        </div>
+    `;
     
-    formContainer.innerHTML = html;
+    dataContainer.innerHTML = html;
     preview.style.display = 'block';
     
     // Добавляем обработчики для полей
-    const inputs = formContainer.querySelectorAll('.field-input');
+    const inputs = dataContainer.querySelectorAll('.field-input');
     inputs.forEach(input => {
         input.addEventListener('input', function() {
             if (this.value.trim()) {
@@ -331,6 +412,15 @@ function initializeButtons() {
     const fillBtn = document.getElementById('fillDocument');
     const downloadBtn = document.getElementById('downloadBtn');
 
+    // Обновляем текст кнопки
+    if (fillBtn) {
+        fillBtn.textContent = 'Сформировать анкету';
+    }
+
+    if (downloadBtn) {
+        downloadBtn.textContent = 'Скачать анкету';
+    }
+
     fillBtn.addEventListener('click', generateDocument);
     downloadBtn.addEventListener('click', downloadDocument);
 }
@@ -342,19 +432,29 @@ function collectFormData() {
     const inputs = form.querySelectorAll('input');
     
     inputs.forEach(input => {
-        formData[input.name] = input.value.trim();
+        if (input.name === 'userEmail') {
+            userEmail = input.value.trim();
+        } else {
+            formData[input.name] = input.value.trim();
+        }
     });
     
     return formData;
 }
 
-// Генерация документа
+// Генерация анкеты
 function generateDocument() {
     const formData = collectFormData();
     
+    // Проверяем email пользователя
+    if (!userEmail || !validateEmail(userEmail)) {
+        alert('Укажите корректный email для отправки анкеты');
+        return;
+    }
+    
     // Проверяем обязательные поля
     const missingRequired = [];
-    for (const [fieldName, fieldConfig] of Object.entries(FORM_FIELDS)) {
+    for (const [fieldName, fieldConfig] of Object.entries(COMPANY_FIELDS)) {
         if (fieldConfig.required && !formData[fieldName]) {
             missingRequired.push(fieldConfig.label);
         }
@@ -365,209 +465,178 @@ function generateDocument() {
         return;
     }
 
-    const templates = {
-        application: generateApplication,
-        questionnaire: generateQuestionnaire,
-        agreement: generateAgreement
-    };
-
-    const generator = templates[selectedTemplate];
-    if (generator) {
-        generatedDocument = generator(formData);
-        showResult();
-    }
+    generatedDocument = generateCompanyQuestionnaire(formData);
+    showResult();
 }
 
-// Шаблон заявления (обновленный)
-function generateApplication(data) {
+// Генерация анкеты юридического лица
+function generateCompanyQuestionnaire(data) {
     const doc = new docx.Document({
         sections: [{
             properties: {},
             children: [
                 new docx.Paragraph({
-                    text: "В ПАО \"Промсвязьбанк\"",
-                    alignment: docx.AlignmentType.RIGHT,
-                }),
-                new docx.Paragraph({
-                    text: `от ${data.lastName} ${data.firstName} ${data.middleName}`,
-                    alignment: docx.AlignmentType.RIGHT,
-                }),
-                new docx.Paragraph({ text: "" }),
-                new docx.Paragraph({
-                    text: "ЗАЯВЛЕНИЕ",
+                    text: "АНКЕТА ЮРИДИЧЕСКОГО ЛИЦА",
                     heading: docx.HeadingLevel.HEADING_1,
                     alignment: docx.AlignmentType.CENTER,
                 }),
                 new docx.Paragraph({
-                    text: "на заключение договора банковского обслуживания",
+                    text: 'ОАО "Банк Полёт!"',
                     alignment: docx.AlignmentType.CENTER,
+                    spacing: { after: 400 }
                 }),
-                new docx.Paragraph({ text: "" }),
-                new docx.Paragraph({
-                    text: `Прошу заключить со мной договор банковского обслуживания.`,
-                }),
-                new docx.Paragraph({ text: "" }),
-                new docx.Paragraph({
-                    text: "Персональные данные:",
-                    bold: true,
-                }),
-                new docx.Paragraph({
-                    text: `ФИО: ${data.lastName} ${data.firstName} ${data.middleName}`,
-                }),
-                new docx.Paragraph({
-                    text: `Дата рождения: ${formatDate(data.birthDate)}`,
-                }),
-                new docx.Paragraph({
-                    text: `Паспорт: ${data.passportSeries} ${data.passportNumber}`,
-                }),
-                new docx.Paragraph({
-                    text: `Телефон: ${data.phone}`,
-                }),
-                new docx.Paragraph({
-                    text: `Email: ${data.email || 'не указан'}`,
-                }),
-                new docx.Paragraph({ text: "" }),
-                new docx.Paragraph({
-                    text: `Дата: ${new Date().toLocaleDateString('ru-RU')}`,
-                }),
-                new docx.Paragraph({
-                    text: "Подпись: ________________",
-                }),
-            ],
-        }],
-    });
-
-    return doc;
-}
-
-// Полная анкета клиента
-function generateQuestionnaire(data) {
-    const doc = new docx.Document({
-        sections: [{
-            properties: {},
-            children: [
-                new docx.Paragraph({
-                    text: "АНКЕТА КЛИЕНТА - ФИЗИЧЕСКОГО ЛИЦА",
-                    heading: docx.HeadingLevel.HEADING_1,
-                    alignment: docx.AlignmentType.CENTER,
-                }),
-                new docx.Paragraph({
-                    text: "ПАО \"Промсвязьбанк\"",
-                    alignment: docx.AlignmentType.CENTER,
-                }),
-                new docx.Paragraph({ text: "" }),
                 
-                // Персональные данные
+                // Основная информация
                 new docx.Paragraph({
-                    text: "1. ПЕРСОНАЛЬНЫЕ ДАННЫЕ",
+                    text: "1. ОСНОВНАЯ ИНФОРМАЦИЯ",
                     bold: true,
+                    spacing: { before: 200, after: 200 }
                 }),
                 new docx.Paragraph({
-                    text: `Фамилия: ${data.lastName || '________________________________'}`,
+                    text: `Полное наименование: ${data.fullName || '________________________________'}`,
                 }),
                 new docx.Paragraph({
-                    text: `Имя: ${data.firstName || '________________________________'}`,
+                    text: `Сокращенное наименование: ${data.shortName || '________________________________'}`,
                 }),
                 new docx.Paragraph({
-                    text: `Отчество: ${data.middleName || '________________________________'}`,
+                    text: `ИНН: ${data.inn || '__________________'}`,
                 }),
                 new docx.Paragraph({
-                    text: `Дата рождения: ${formatDate(data.birthDate) || '________________________________'}`,
+                    text: `КПП: ${data.kpp || '__________________'}`,
                 }),
                 new docx.Paragraph({
-                    text: `Место рождения: ${data.birthPlace || '________________________________'}`,
+                    text: `ОГРН: ${data.ogrn || '__________________'}`,
                 }),
                 new docx.Paragraph({
-                    text: `Гражданство: ${data.citizenship || '________________________________'}`,
+                    text: `ОКПО: ${data.okpo || '__________________'}`,
                 }),
-                new docx.Paragraph({ text: "" }),
+                new docx.Paragraph({
+                    text: `ОКВЭД: ${data.okved || '__________________'}`,
+                }),
                 
-                // Паспортные данные
+                // Адреса
                 new docx.Paragraph({
-                    text: "2. ПАСПОРТНЫЕ ДАННЫЕ",
+                    text: "2. АДРЕСА",
                     bold: true,
+                    spacing: { before: 300, after: 200 }
                 }),
                 new docx.Paragraph({
-                    text: `Серия: ${data.passportSeries || '________'} Номер: ${data.passportNumber || '______________'}`,
+                    text: `Юридический адрес: ${data.legalAddress || '________________________________________________'}`,
                 }),
                 new docx.Paragraph({
-                    text: `Дата выдачи: ${formatDate(data.passportDate) || '________________________________'}`,
+                    text: `Фактический адрес: ${data.actualAddress || '________________________________________________'}`,
                 }),
                 new docx.Paragraph({
-                    text: `Кем выдан: ${data.passportIssuer || '________________________________'}`,
+                    text: `Почтовый адрес: ${data.mailingAddress || '________________________________________________'}`,
                 }),
-                new docx.Paragraph({
-                    text: `Код подразделения: ${data.passportCode || '________'}`,
-                }),
-                new docx.Paragraph({ text: "" }),
                 
                 // Контактная информация
                 new docx.Paragraph({
                     text: "3. КОНТАКТНАЯ ИНФОРМАЦИЯ",
                     bold: true,
+                    spacing: { before: 300, after: 200 }
                 }),
                 new docx.Paragraph({
-                    text: `Телефон: ${data.phone || '________________________________'}`,
+                    text: `Телефон: ${data.phone || '__________________'}`,
                 }),
                 new docx.Paragraph({
-                    text: `Email: ${data.email || '________________________________'}`,
+                    text: `Факс: ${data.fax || '__________________'}`,
                 }),
                 new docx.Paragraph({
-                    text: `Адрес регистрации: ${data.registrationAddress || '________________________________'}`,
+                    text: `Email: ${data.email || '__________________'}`,
                 }),
                 new docx.Paragraph({
-                    text: `Адрес фактического проживания: ${data.actualAddress || '________________________________'}`,
+                    text: `Веб-сайт: ${data.website || '__________________'}`,
                 }),
-                new docx.Paragraph({ text: "" }),
                 
-                // Дополнительные данные
+                // Руководство
                 new docx.Paragraph({
-                    text: "4. ДОПОЛНИТЕЛЬНАЯ ИНФОРМАЦИЯ",
+                    text: "4. РУКОВОДСТВО",
                     bold: true,
+                    spacing: { before: 300, after: 200 }
                 }),
                 new docx.Paragraph({
-                    text: `ИНН: ${data.inn || '________________________________'}`,
+                    text: `Должность руководителя: ${data.directorPosition || '________________________________'}`,
                 }),
                 new docx.Paragraph({
-                    text: `СНИЛС: ${data.snils || '________________________________'}`,
+                    text: `ФИО руководителя: ${data.directorName || '________________________________________________'}`,
                 }),
                 new docx.Paragraph({
-                    text: `Семейное положение: ${data.maritalStatus || '________________________________'}`,
+                    text: `Документ-основание полномочий: ${data.directorDocument || '________________________________'}`,
                 }),
                 new docx.Paragraph({
-                    text: `Образование: ${data.education || '________________________________'}`,
+                    text: `Главный бухгалтер: ${data.accountantName || '________________________________________________'}`,
                 }),
-                new docx.Paragraph({ text: "" }),
                 
-                // Трудовая деятельность
+                // Регистрационные данные
                 new docx.Paragraph({
-                    text: "5. ТРУДОВАЯ ДЕЯТЕЛЬНОСТЬ",
+                    text: "5. РЕГИСТРАЦИОННЫЕ ДАННЫЕ",
                     bold: true,
+                    spacing: { before: 300, after: 200 }
                 }),
                 new docx.Paragraph({
-                    text: `Место работы: ${data.workplace || '________________________________'}`,
+                    text: `Дата государственной регистрации: ${formatDate(data.registrationDate) || '______________'}`,
                 }),
                 new docx.Paragraph({
-                    text: `Должность: ${data.position || '________________________________'}`,
+                    text: `Орган регистрации: ${data.registrationAuthority || '________________________________________________'}`,
+                }),
+                
+                // Финансовая информация
+                new docx.Paragraph({
+                    text: "6. ФИНАНСОВАЯ ИНФОРМАЦИЯ",
+                    bold: true,
+                    spacing: { before: 300, after: 200 }
                 }),
                 new docx.Paragraph({
-                    text: `Стаж работы: ${data.workExperience || '________________________________'}`,
+                    text: `Уставный капитал: ${data.authorizedCapital || '__________________'} руб.`,
                 }),
                 new docx.Paragraph({
-                    text: `Ежемесячный доход: ${data.monthlyIncome || '________________________________'} руб.`,
+                    text: `Количество сотрудников: ${data.employeesCount || '__________________'} чел.`,
                 }),
-                new docx.Paragraph({ text: "" }),
+                
+                // Банковские реквизиты
+                new docx.Paragraph({
+                    text: "7. БАНКОВСКИЕ РЕКВИЗИТЫ",
+                    bold: true,
+                    spacing: { before: 300, after: 200 }
+                }),
+                new docx.Paragraph({
+                    text: `Наименование банка: ${data.bankName || '________________________________________________'}`,
+                }),
+                new docx.Paragraph({
+                    text: `Расчетный счет: ${data.currentAccount || '__________________________________'}`,
+                }),
+                new docx.Paragraph({
+                    text: `Корреспондентский счет: ${data.correspondentAccount || '__________________________________'}`,
+                }),
+                new docx.Paragraph({
+                    text: `БИК: ${data.bik || '__________________'}`,
+                }),
                 
                 // Подпись
                 new docx.Paragraph({
+                    text: "",
+                    spacing: { before: 400 }
+                }),
+                new docx.Paragraph({
                     text: `Дата заполнения: ${new Date().toLocaleDateString('ru-RU')}`,
                 }),
-                new docx.Paragraph({ text: "" }),
                 new docx.Paragraph({
-                    text: "Клиент: ________________ /_____________________/",
+                    text: "",
+                    spacing: { before: 200 }
                 }),
                 new docx.Paragraph({
-                    text: "         (подпись)              (расшифровка подписи)",
+                    text: "Руководитель: ________________ /_____________________/",
+                }),
+                new docx.Paragraph({
+                    text: "                    (подпись)              (расшифровка подписи)",
+                }),
+                new docx.Paragraph({
+                    text: "",
+                    spacing: { before: 200 }
+                }),
+                new docx.Paragraph({
+                    text: "М.П.",
                 }),
             ],
         }],
@@ -576,76 +645,10 @@ function generateQuestionnaire(data) {
     return doc;
 }
 
-// Договор обслуживания
-function generateAgreement(data) {
-    const doc = new docx.Document({
-        sections: [{
-            properties: {},
-            children: [
-                new docx.Paragraph({
-                    text: "ДОГОВОР БАНКОВСКОГО ОБСЛУЖИВАНИЯ",
-                    heading: docx.HeadingLevel.HEADING_1,
-                    alignment: docx.AlignmentType.CENTER,
-                }),
-                new docx.Paragraph({
-                    text: `г. Москва                                     ${new Date().toLocaleDateString('ru-RU')}`,
-                }),
-                new docx.Paragraph({ text: "" }),
-                new docx.Paragraph({
-                    text: `ПАО \"Промсвязьбанк\", именуемый в дальнейшем \"Банк\", с одной стороны, и ${data.lastName} ${data.firstName} ${data.middleName}, именуемый в дальнейшем \"Клиент\", с другой стороны, заключили настоящий Договор о нижеследующем:`,
-                }),
-                new docx.Paragraph({ text: "" }),
-                new docx.Paragraph({
-                    text: "1. ДАННЫЕ КЛИЕНТА",
-                    bold: true,
-                }),
-                new docx.Paragraph({
-                    text: `ФИО: ${data.lastName} ${data.firstName} ${data.middleName}`,
-                }),
-                new docx.Paragraph({
-                    text: `Дата рождения: ${formatDate(data.birthDate)}`,
-                }),
-                new docx.Paragraph({
-                    text: `Паспорт: серия ${data.passportSeries} номер ${data.passportNumber}`,
-                }),
-                new docx.Paragraph({
-                    text: `Выдан: ${formatDate(data.passportDate)} ${data.passportIssuer}`,
-                }),
-                new docx.Paragraph({
-                    text: `Адрес регистрации: ${data.registrationAddress}`,
-                }),
-                new docx.Paragraph({
-                    text: `Телефон: ${data.phone}`,
-                }),
-                new docx.Paragraph({ text: "" }),
-                new docx.Paragraph({
-                    text: "2. УСЛОВИЯ ДОГОВОРА",
-                    bold: true,
-                }),
-                new docx.Paragraph({
-                    text: "2.1. Банк обязуется предоставить Клиенту банковские услуги в соответствии с тарифами Банка.",
-                }),
-                new docx.Paragraph({
-                    text: "2.2. Клиент обязуется соблюдать требования законодательства и внутренних документов Банка.",
-                }),
-                new docx.Paragraph({ text: "" }),
-                new docx.Paragraph({
-                    text: "3. ПОДПИСИ СТОРОН",
-                    bold: true,
-                }),
-                new docx.Paragraph({ text: "" }),
-                new docx.Paragraph({
-                    text: "БАНК:                           КЛИЕНТ:",
-                }),
-                new docx.Paragraph({ text: "" }),
-                new docx.Paragraph({
-                    text: "_________________         _________________",
-                }),
-            ],
-        }],
-    });
-
-    return doc;
+// Вспомогательная функция для проверки email
+function validateEmail(email) {
+    const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return re.test(email);
 }
 
 // Вспомогательная функция форматирования дат
@@ -658,25 +661,59 @@ function formatDate(dateString) {
 // Показать результат
 function showResult() {
     const resultDiv = document.getElementById('result');
+    const resultTitle = resultDiv.querySelector('h2');
+    const successMessage = resultDiv.querySelector('.success-message p');
+    
+    if (resultTitle) {
+        resultTitle.textContent = '3. Анкета готова';
+    }
+    
+    if (successMessage) {
+        successMessage.textContent = 'Анкета юридического лица успешно сформирована';
+    }
+    
     resultDiv.style.display = 'block';
     resultDiv.scrollIntoView({ behavior: 'smooth' });
+    
+    // Автоматически "отправляем" на email (имитация)
+    if (userEmail) {
+        setTimeout(() => {
+            simulateEmailSending();
+        }, 1000);
+    }
+}
+
+// Имитация отправки на email
+function simulateEmailSending() {
+    const resultContent = document.querySelector('.result-content');
+    
+    const emailNotification = document.createElement('div');
+    emailNotification.style.cssText = `
+        background-color: var(--psb-light-gray);
+        border: 1px solid var(--psb-orange);
+        border-radius: 6px;
+        padding: 15px;
+        margin: 20px 0;
+        text-align: left;
+    `;
+    
+    emailNotification.innerHTML = `
+        <strong style="color: var(--psb-orange);">📧 Отправка на email</strong><br>
+        <span style="color: var(--psb-dark-gray);">Анкета отправлена на адрес: <strong>${userEmail}</strong></span><br>
+        <small style="color: #666;">Проверьте папку "Входящие" и "Спам"</small>
+    `;
+    
+    resultContent.insertBefore(emailNotification, resultContent.querySelector('.btn-download'));
 }
 
 // Скачивание документа
 function downloadDocument() {
     if (!generatedDocument) {
-        alert('Документ не сгенерирован');
+        alert('Анкета не сгенерирована');
         return;
     }
 
-    const templateNames = {
-        application: 'Заявление',
-        questionnaire: 'Анкета',
-        agreement: 'Договор'
-    };
-
     docx.Packer.toBlob(generatedDocument).then(function(blob) {
-        const fileName = `${templateNames[selectedTemplate]}_${new Date().getTime()}.docx`;
-        saveAs(blob, fileName);
+        saveAs(blob, '1_Анкета.docx');
     });
 }
