@@ -1,89 +1,188 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Заполнение документов ПСБ</title>
-    <link rel="stylesheet" href="style.css">
-    <!-- Подключаем библиотеки -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/docx/8.2.2/docx.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Помощник заполнения анкеты</title>
+<style>
+  :root {
+    --blue-primary: #0047AB;
+    --orange-accent: #FF7A00;
+    --orange-hover: #E65C00;
+    --bg-light: #F4F8FC;
+    --white: #FFFFFF;
+    --text-main: #1E293B;
+    --text-muted: #64748B;
+    --success: #10B981;
+    --error: #EF4444;
+    --radius: 8px;
+    --shadow: 0 4px 12px rgba(0, 71, 171, 0.08);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    background: var(--bg-light);
+    color: var(--text-main);
+    line-height: 1.5;
+  }
+
+  .header {
+    background: var(--white);
+    border-bottom: 1px solid #E2E8F0;
+    padding: 16px 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .logo { font-weight: 700; font-size: 18px; color: var(--blue-primary); }
+  .header-actions { display: flex; gap: 12px; align-items: center; }
+  .icon-btn { background: none; border: none; cursor: pointer; color: var(--text-muted); font-size: 20px; }
+
+  .progress-bar {
+    background: var(--white);
+    padding: 12px 24px;
+    display: flex;
+    justify-content: center;
+    gap: 32px;
+  }
+  .step { display: flex; align-items: center; gap: 8px; color: var(--text-muted); font-size: 14px; }
+  .step.active { color: var(--blue-primary); font-weight: 600; }
+  .step.completed { color: var(--success); }
+  .step-circle {
+    width: 24px; height: 24px; border-radius: 50%; border: 2px solid currentColor;
+    display: flex; align-items: center; justify-content: center; font-size: 12px;
+  }
+  .step.active .step-circle { background: var(--blue-primary); border-color: var(--blue-primary); color: var(--white); }
+  .step.completed .step-circle { background: var(--success); border-color: var(--success); color: var(--white); }
+
+  .main { max-width: 1000px; margin: 24px auto; display: grid; grid-template-columns: 1fr 300px; gap: 24px; padding: 0 16px; }
+
+  .card {
+    background: var(--white);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 24px;
+  }
+  .card h2 { margin-bottom: 16px; font-size: 20px; color: var(--blue-primary); }
+
+  .form-group { margin-bottom: 16px; }
+  .form-group label { display: block; margin-bottom: 6px; font-weight: 500; font-size: 14px; }
+  .form-input {
+    width: 100%; padding: 10px 12px; border: 1px solid #CBD5E1; border-radius: var(--radius);
+    font-size: 15px; transition: border 0.2s;
+  }
+  .form-input:focus { outline: none; border-color: var(--blue-primary); box-shadow: 0 0 0 3px rgba(0, 71, 171, 0.1); }
+  .form-input.error { border-color: var(--error); }
+  .hint { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+  .error-msg { color: var(--error); font-size: 12px; display: none; margin-top: 4px; }
+  .form-input.error + .error-msg { display: block; }
+
+  .btn {
+    padding: 10px 20px; border-radius: var(--radius); font-size: 15px; font-weight: 500; cursor: pointer; border: none; transition: 0.2s;
+  }
+  .btn-primary { background: var(--orange-accent); color: var(--white); }
+  .btn-primary:hover { background: var(--orange-hover); }
+  .btn-secondary { background: transparent; color: var(--blue-primary); border: 1px solid var(--blue-primary); }
+  .btn-secondary:hover { background: rgba(0, 71, 171, 0.05); }
+  .btn-group { display: flex; gap: 12px; margin-top: 20px; }
+
+  .sidebar .card { padding: 16px; }
+  .tip { display: flex; gap: 10px; margin-bottom: 12px; align-items: flex-start; }
+  .tip-icon { color: var(--orange-accent); font-size: 18px; flex-shrink: 0; }
+  .tip-text { font-size: 13px; color: var(--text-muted); }
+
+  footer { text-align: center; padding: 24px; color: var(--text-muted); font-size: 13px; border-top: 1px solid #E2E8F0; margin-top: 32px; }
+
+  @media (max-width: 768px) {
+    .main { grid-template-columns: 1fr; }
+    .progress-bar { gap: 16px; font-size: 13px; }
+    .sidebar { order: -1; }
+  }
+</style>
 </head>
 <body>
-    <div class="container">
-        <header class="header">
-            <div class="logo-section">
-                <h1>ПСБ</h1>
-                <span class="subtitle">Система заполнения документов</span>
-            </div>
-        </header>
 
-        <main class="main-content">
-            <!-- Шаг 1: Загрузка PDF -->
-            <section class="step">
-                <h2>1. Загрузка документа с данными</h2>
-                <div class="upload-container">
-                    <div class="upload-area" id="pdfUploadArea">
-                        <input type="file" id="pdfFile" accept=".pdf" style="display: none;">
-                        <div class="upload-content">
-                            <div class="upload-icon">📄</div>
-                            <p>Выберите PDF файл с данными</p>
-                            <span class="upload-hint">или перетащите файл сюда</span>
-                        </div>
-                    </div>
-                    <div id="pdfStatus" class="status"></div>
-                </div>
-            </section>
+<header class="header">
+  <div class="logo">🏦 Банк-Помощник</div>
+  <div class="header-actions">
+    <button class="icon-btn" title="Справка">❓</button>
+    <button class="icon-btn" title="Настройки">⚙️</button>
+  </div>
+</header>
 
-            <!-- Шаг 2: Выбор шаблона -->
-            <section class="step">
-                <h2>2. Выбор типа документа</h2>
-                <div class="template-grid">
-                    <button class="template-btn" data-template="application">
-                        <span class="template-icon">📋</span>
-                        Заявление на обслуживание
-                    </button>
-                    <button class="template-btn" data-template="questionnaire">
-                        <span class="template-icon">📝</span>
-                        Анкета клиента
-                    </button>
-                    <button class="template-btn" data-template="agreement">
-                        <span class="template-icon">📄</span>
-                        Договор обслуживания
-                    </button>
-                </div>
-            </section>
+<div class="progress-bar">
+  <div class="step completed"><span class="step-circle">✓</span> Регистрация</div>
+  <div class="step active"><span class="step-circle">2</span> Личные данные</div>
+  <div class="step"><span class="step-circle">3</span> Финансы</div>
+  <div class="step"><span class="step-circle">4</span> Подтверждение</div>
+</div>
 
-            <!-- Шаг 3: Проверка данных -->
-            <section class="step" id="dataPreview" style="display: none;">
-                <h2>3. Проверка извлеченных данных</h2>
-                <div class="data-form" id="dataForm">
-                    <!-- Здесь будут поля для редактирования -->
-                </div>
-                <div class="action-buttons">
-                    <button id="fillDocument" class="btn-primary">
-                        Сформировать документ
-                    </button>
-                </div>
-            </section>
+<main class="main">
+  <section class="card">
+    <h2>Шаг 2: Личные данные</h2>
+    <form id="anketa-form">
+      <div class="form-group">
+        <label for="fullname">ФИО полностью</label>
+        <input type="text" id="fullname" class="form-input" placeholder="Иванов Иван Иванович">
+        <div class="hint">Как указано в паспорте</div>
+        <div class="error-msg">Поле обязательно для заполнения</div>
+      </div>
 
-            <!-- Результат -->
-            <section class="step" id="result" style="display: none;">
-                <h2>4. Готовый документ</h2>
-                <div class="result-content">
-                    <div class="success-message">
-                        <span class="success-icon">✅</span>
-                        <p>Документ успешно сформирован</p>
-                    </div>
-                    <button id="downloadBtn" class="btn-download">
-                        Скачать документ
-                    </button>
-                </div>
-            </section>
-        </main>
+      <div class="form-group">
+        <label for="phone">Контактный телефон</label>
+        <input type="tel" id="phone" class="form-input" placeholder="+7 (999) 000-00-00">
+        <div class="error-msg">Введите корректный номер</div>
+      </div>
+
+      <div class="form-group">
+        <label for="email">Электронная почта</label>
+        <input type="email" id="email" class="form-input error" placeholder="example@mail.ru">
+        <div class="error-msg">Неверный формат email</div>
+      </div>
+
+      <div class="btn-group">
+        <button type="button" class="btn btn-secondary">← Назад</button>
+        <button type="button" class="btn btn-primary">Далее →</button>
+      </div>
+      <p style="margin-top:12px; font-size:13px; color:var(--text-muted);">Черновик сохраняется автоматически каждые 30 сек</p>
+    </form>
+  </section>
+
+  <aside class="sidebar">
+    <div class="card">
+      <h3 style="font-size:16px; margin-bottom:12px; color:var(--blue-primary);">💡 Подсказки</h3>
+      <div class="tip">
+        <span class="tip-icon">🔹</span>
+        <div class="tip-text">ФИО указывайте строго по паспорту. Отчества без сокращений.</div>
+      </div>
+      <div class="tip">
+        <span class="tip-icon">🔹</span>
+        <div class="tip-text">Телефон должен быть активен. На него придёт SMS для подтверждения.</div>
+      </div>
+      <div class="tip">
+        <span class="tip-icon">🔹</span>
+        <div class="tip-text">Почта используется для отправки выписки и уведомлений.</div>
+      </div>
+      <button class="btn btn-secondary" style="width:100%; margin-top:8px; font-size:13px;">📄 Скачать инструкцию (PDF)</button>
     </div>
+  </aside>
+</main>
 
-    <script src="script.js"></script>
+<footer>
+  © 2026 Банк-Помощник. Все данные защищены в соответствии с 152-ФЗ. <a href="#" style="color:var(--blue-primary);">Политика конфиденциальности</a>
+</footer>
+
+<script>
+  // Простая демонстрация валидации
+  document.querySelectorAll('.form-input').forEach(input => {
+    input.addEventListener('blur', () => {
+      if (input.value.trim() === '') input.classList.add('error');
+      else input.classList.remove('error');
+    });
+    input.addEventListener('input', () => input.classList.remove('error'));
+  });
+</script>
+
 </body>
 </html>
