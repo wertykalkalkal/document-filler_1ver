@@ -1,219 +1,362 @@
-<!DOCTYPE html>
+<<!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Автозаполнение анкеты из выписки ЕГРЮЛ</title>
-    <!-- Библиотеки для работы в браузере -->
+    <title>The Bestbank — Сервис анкетирования</title>
+    <!-- Библиотеки -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <script src="https://unpkg.com/docx@8.2.2/build/index.umd.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     <style>
-        :root { --primary: #2c3e50; --accent: #3498db; --bg: #f8f9fa; --light: #ffffff; }
+        :root {
+            --blue-dark: #003366;
+            --blue-main: #0056b3;
+            --blue-light: #e6f0fa;
+            --orange: #ff6600;
+            --orange-hover: #e65c00;
+            --white: #ffffff;
+            --gray: #f4f6f8;
+            --text: #333333;
+        }
+        
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: #333; padding: 20px; line-height: 1.5; }
-        .container { max-width: 900px; margin: 0 auto; background: var(--light); padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); }
-        h1 { text-align: center; color: var(--primary); margin-bottom: 8px; }
-        .subtitle { text-align: center; color: #666; margin-bottom: 25px; font-size: 14px; }
+        body { font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background: var(--gray); color: var(--text); line-height: 1.5; }
         
-        .upload-zone { border: 2px dashed var(--accent); border-radius: 10px; padding: 30px; text-align: center; background: #f0f7ff; cursor: pointer; transition: 0.2s; margin-bottom: 20px; }
-        .upload-zone:hover { background: #e1f0ff; border-color: #2980b9; }
-        .upload-zone input { display: none; }
-        .status { padding: 12px; border-radius: 6px; margin-bottom: 15px; display: none; font-size: 14px; }
-        .status.loading { display: block; background: #fff3cd; border: 1px solid #ffc107; color: #856404; }
-        .status.success { display: block; background: #d4edda; border: 1px solid #28a745; color: #155724; }
-        .status.error { display: block; background: #f8d7da; border: 1px solid #dc3545; color: #721c24; }
+        /* Header */
+        header { background: var(--white); border-bottom: 3px solid var(--orange); padding: 15px 0; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+        .header-inner { max-width: 900px; margin: 0 auto; padding: 0 20px; display: flex; align-items: center; justify-content: space-between; }
+        .logo { font-size: 24px; font-weight: 800; color: var(--blue-dark); text-transform: uppercase; letter-spacing: 1px; }
+        .logo span { color: var(--orange); }
         
-        .form-section { margin-top: 20px; }
-        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 15px; margin-bottom: 20px; }
-        .field { background: #f8f9fa; padding: 12px; border-radius: 6px; border-left: 3px solid var(--accent); }
-        .field label { display: block; font-size: 12px; color: #666; margin-bottom: 4px; text-transform: uppercase; }
-        .field input { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; }
-        .note { background: #e7f3ff; border: 1px solid #b3d9ff; padding: 12px; border-radius: 6px; font-size: 13px; color: #004085; margin-bottom: 20px; }
-        .btn { display: inline-block; padding: 12px 24px; background: var(--accent); color: white; border: none; border-radius: 6px; font-size: 16px; cursor: pointer; width: 100%; transition: 0.2s; }
-        .btn:hover { background: #2980b9; }
-        .btn:disabled { background: #95a5a6; cursor: not-allowed; }
-        @media (max-width: 600px) { .container { padding: 15px; } }
+        /* Main Container */
+        .container { max-width: 900px; margin: 30px auto; padding: 0 20px; }
+        
+        /* Greeting Card */
+        .greeting { background: var(--white); padding: 25px; border-radius: 8px; border-left: 5px solid var(--blue-main); margin-bottom: 25px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        .greeting h1 { color: var(--blue-dark); font-size: 22px; margin-bottom: 10px; }
+        .greeting p { color: #555; font-size: 15px; }
+        
+        /* Upload Area */
+        .upload-card { background: var(--white); padding: 40px; border-radius: 8px; text-align: center; border: 2px dashed var(--blue-main); transition: 0.3s; cursor: pointer; position: relative; overflow: hidden; }
+        .upload-card:hover { border-color: var(--orange); background: var(--blue-light); }
+        .upload-card input { display: none; }
+        .upload-icon { font-size: 48px; color: var(--blue-main); margin-bottom: 15px; }
+        .upload-text { font-size: 18px; font-weight: 600; color: var(--blue-dark); }
+        .upload-hint { font-size: 13px; color: #888; margin-top: 8px; }
+        
+        /* Status */
+        .status { padding: 15px; border-radius: 6px; margin-top: 20px; display: none; font-size: 14px; text-align: center; }
+        .status.loading { display: block; background: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
+        .status.success { display: block; background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .status.error { display: block; background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        
+        /* Editor Section */
+        .editor { display: none; background: var(--white); padding: 30px; border-radius: 8px; margin-top: 25px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+        .editor-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px solid var(--gray); padding-bottom: 10px; }
+        .editor-title { font-size: 18px; font-weight: 700; color: var(--blue-dark); }
+        .editor-badge { background: var(--orange); color: white; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: bold; }
+        
+        .fields-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; margin-bottom: 25px; }
+        .field-group label { display: block; font-size: 12px; font-weight: 600; color: #666; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .field-group input { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; transition: 0.2s; }
+        .field-group input:focus { outline: none; border-color: var(--orange); box-shadow: 0 0 0 3px rgba(255,102,0,0.1); }
+        
+        .btn { display: inline-flex; align-items: center; justify-content: center; padding: 14px 28px; background: var(--blue-main); color: white; border: none; border-radius: 6px; font-size: 16px; font-weight: 600; cursor: pointer; transition: 0.2s; width: 100%; }
+        .btn:hover { background: var(--orange); transform: translateY(-1px); }
+        .btn:disabled { background: #ccc; cursor: not-allowed; transform: none; }
+        .btn-icon { margin-right: 10px; font-size: 18px; }
+        
+        /* Footer */
+        footer { text-align: center; padding: 30px; color: #888; font-size: 12px; }
+        footer a { color: var(--blue-main); text-decoration: none; }
+        
+        @media (max-width: 600px) {
+            .header-inner { flex-direction: column; text-align: center; }
+            .container { padding: 10px; }
+        }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>📄 Автозаполнение банковской анкеты</h1>
-        <p class="subtitle">Загрузите PDF выписку ЕГРЮЛ → проверьте данные → скачайте готовую анкету в Word</p>
 
-        <div id="status" class="status"></div>
+<header>
+    <div class="header-inner">
+        <div class="logo">The <span>Bestbank</span></div>
+        <div style="font-size: 13px; color: #666;">Корпоративный портал</div>
+    </div>
+</header>
 
-        <div class="upload-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
-            <input type="file" id="fileInput" accept=".pdf">
-            <div style="font-size: 32px; margin-bottom: 8px;">📁</div>
-            <div>Нажмите или перетащите файл PDF сюда</div>
-            <small style="color: #888;">Обработка происходит прямо в браузере. Файлы не отправляются на сервер.</small>
-        </div>
-
-        <div id="editor" style="display:none;">
-            <div class="note">⚠️ Проверьте распознанные данные. При необходимости отредактируйте их перед скачиванием анкеты.</div>
-            <div class="form-grid" id="fieldsContainer"></div>
-            <button class="btn" id="downloadBtn" onclick="generateDocx()">📥 Сформировать и скачать анкету (.docx)</button>
-        </div>
+<div class="container">
+    <div class="greeting">
+        <h1>Добро пожаловать!</h1>
+        <p>Уважаемый клиент! Мы ценим ваше время. Загрузите выписку из ЕГРЮЛ, и наш сервис автоматически заполнит основную часть банковской анкеты. Вам останется лишь проверить данные и скачать готовый документ.</p>
     </div>
 
-    <script>
-        // Настройка PDF.js
-        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    <div class="upload-card" id="dropZone" onclick="document.getElementById('fileInput').click()">
+        <input type="file" id="fileInput" accept=".pdf">
+        <div class="upload-icon">📄</div>
+        <div class="upload-text">Загрузить выписку ЕГРЮЛ (PDF)</div>
+        <div class="upload-hint">Перетащите файл или нажмите для выбора</div>
+    </div>
 
-        const fileInput = document.getElementById('fileInput');
-        const dropZone = document.getElementById('dropZone');
-        const statusEl = document.getElementById('status');
-        const editorEl = document.getElementById('editor');
-        const fieldsContainer = document.getElementById('fieldsContainer');
-        let extracted = {};
+    <div id="status" class="status"></div>
 
-        // Drag & Drop
-        dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.style.background='#d4e6f1'; });
-        dropZone.addEventListener('dragleave', () => dropZone.style.background='#f0f7ff');
-        dropZone.addEventListener('drop', e => {
-            e.preventDefault(); dropZone.style.background='#f0f7ff';
-            if(e.dataTransfer.files[0]?.type === 'application/pdf') handleFile(e.dataTransfer.files[0]);
-            else showStatus('Пожалуйста, загрузите файл в формате PDF', 'error');
+    <div class="editor" id="editor">
+        <div class="editor-header">
+            <div class="editor-title">Проверка данных</div>
+            <div class="editor-badge">Шаг 2 из 2</div>
+        </div>
+        <p style="margin-bottom: 15px; font-size: 14px; color: #555;">
+            Система распознала следующие данные. Отредактируйте их при необходимости перед скачиванием полной анкеты.
+        </p>
+        <div class="fields-grid" id="fieldsContainer"></div>
+        <button class="btn" id="downloadBtn" onclick="generateDocx()">
+            <span class="btn-icon">📥</span> Скачать заполненную анкету (.docx)
+        </button>
+    </div>
+</div>
+
+<footer>
+    &copy; 2024 The Bestbank. Все права защищены. <br>
+    <a href="#">Политика конфиденциальности</a> | <a href="#">Поддержка</a>
+</footer>
+
+<script>
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+    const fileInput = document.getElementById('fileInput');
+    const dropZone = document.getElementById('dropZone');
+    const statusEl = document.getElementById('status');
+    const editorEl = document.getElementById('editor');
+    const fieldsContainer = document.getElementById('fieldsContainer');
+    let extracted = {};
+
+    // Drag & Drop
+    dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.style.borderColor='var(--orange)'; dropZone.style.background='var(--blue-light)'; });
+    dropZone.addEventListener('dragleave', () => { dropZone.style.borderColor='var(--blue-main)'; dropZone.style.background='var(--white)'; });
+    dropZone.addEventListener('drop', e => {
+        e.preventDefault(); dropZone.style.borderColor='var(--blue-main)'; dropZone.style.background='var(--white)';
+        if(e.dataTransfer.files[0]?.type === 'application/pdf') handleFile(e.dataTransfer.files[0]);
+        else showStatus('Пожалуйста, загрузите файл в формате PDF', 'error');
+    });
+    fileInput.addEventListener('change', e => e.target.files[0] && handleFile(e.target.files[0]));
+
+    function showStatus(msg, type) {
+        statusEl.className = 'status ' + type;
+        statusEl.innerHTML = type === 'loading' ? `⏳ ${msg}` : (type === 'success' ? `✅ ${msg}` : `❌ ${msg}`);
+    }
+
+    async function handleFile(file) {
+        showStatus('Анализ документа...', 'loading');
+        editorEl.style.display = 'none';
+        try {
+            const buf = await file.arrayBuffer();
+            const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+            let text = '';
+            for(let i=1; i<=pdf.numPages; i++) {
+                const page = await pdf.getPage(i);
+                const content = await page.getTextContent();
+                text += content.items.map(x => x.str).join(' ') + '\n';
+            }
+            extracted = parseText(text);
+            renderForm(extracted);
+            showStatus('Данные успешно извлечены! Проверьте их ниже.', 'success');
+            editorEl.style.display = 'block';
+            editorEl.scrollIntoView({ behavior: 'smooth' });
+        } catch(e) {
+            console.error(e);
+            showStatus('Ошибка обработки файла. Убедитесь, что это текстовый PDF.', 'error');
+        }
+    }
+
+    function parseText(text) {
+        const clean = t => t ? t.replace(/\s+/g,' ').trim() : '';
+        const get = (regex) => { const m = text.match(regex); return m ? clean(m[1]) : ''; }
+        
+        return {
+            fullName: get(/ПОЛНОЕ\s+ФИРМЕННОЕ\s+НАИМЕНОВАНИЕ\s+НА\s+РУССКОМ\s+ЯЗЫКЕ\s*([\s\S]{10,200}?)(?=СОКРАЩЕННОЕ|ИНН|ОГРН|$)/i),
+            shortName: get(/СОКРАЩЕННОЕ\s+ФИРМЕННОЕ\s+НАИМЕНОВАНИЕ\s+НА\s+РУССКОМ\s+ЯЗЫКЕ\s*([\s\S]{5,100}?)(?=ОПФ|ИНН|ОГРН|$)/i),
+            inn: get(/ИНН\s*[:\(]?\s*(\d{10,12})/i),
+            ogrn: get(/ОГРН\s*[:\(]?\s*(\d{13,15})/i),
+            kpp: get(/КПП\s*[:\(]?\s*(\d{9})/i),
+            regDate: get(/(\d{2}\.\d{2}\.\d{4})/),
+            address: get(/АДРЕС\s*\(МЕСТОНАХОЖДЕНИЕ\)\s*([\s\S]{10,300}?)(?=ОГРН|ИНН|СТАТУС|ОКВЭД|$)/i),
+            okvedMain: get(/ОСНОВНОЙ\s+ВИД\s+ДЕЯТЕЛЬНОСТИ\s*([\s\S]{5,200}?)(?=ДОПОЛНИТЕЛЬНЫЕ|СВЕДЕНИЯ|$)/i),
+            capital: get(/РАЗМЕР\s+УСТАВНОГО\s+КАПИТАЛА\s*[\s\S]*?(\d[\d\s.,]+)\s*руб/i),
+            director: get(/ЛИЦО,?\s*ИМЕЮЩЕЕ\s+ПРАВО\s+ДЕЙСТВОВАТЬ\s+БЕЗ\s+ДОВЕРЕННОСТИ\s*([\s\S]{10,150}?)(?=УЧРЕДИТЕЛЬ|АДРЕС|ОКВЭД|ЛИЦА|$)/i),
+            opf: /(Общество\s+с\s+ограниченной\s+ответственностью|Акционерное\s+общество|Публичное\s+акционерное\s+общество)/i.exec(text)?.[1] || ''
+        };
+    }
+
+    function renderForm(data) {
+        fieldsContainer.innerHTML = '';
+        const fields = [
+            {key:'fullName', label:'Полное наименование'}, {key:'shortName', label:'Сокращённое наименование'},
+            {key:'opf', label:'Организационно-правовая форма'}, {key:'inn', label:'ИНН'},
+            {key:'ogrn', label:'ОГРН'}, {key:'kpp', label:'КПП'},
+            {key:'regDate', label:'Дата регистрации'}, {key:'address', label:'Юридический адрес'},
+            {key:'okvedMain', label:'Основной ОКВЭД'}, {key:'capital', label:'Уставный капитал'},
+            {key:'director', label:'Руководитель (ЕИО)'}
+        ];
+        fields.forEach(f => {
+            const div = document.createElement('div'); div.className = 'field-group';
+            div.innerHTML = `<label>${f.label}</label><input type="text" id="inp_${f.key}" value="${data[f.key] || ''}">`;
+            fieldsContainer.appendChild(div);
         });
-        fileInput.addEventListener('change', e => e.target.files[0] && handleFile(e.target.files[0]));
+    }
 
-        function showStatus(msg, type) {
-            statusEl.className = 'status ' + type;
-            statusEl.innerHTML = type === 'loading' ? `<span style="display:inline-block;width:12px;height:12px;border:2px solid #856404;border-radius:50%;border-top-color:transparent;animation:spin 1s linear infinite;margin-right:8px"></span> ${msg}` : msg;
-        }
+    async function generateDocx() {
+        const btn = document.getElementById('downloadBtn');
+        btn.disabled = true; btn.textContent = '⏳ Генерация документа...';
+        
+        const data = {};
+        document.querySelectorAll('#fieldsContainer input').forEach(inp => {
+            data[inp.id.replace('inp_','')] = inp.value;
+        });
 
-        async function handleFile(file) {
-            showStatus('Чтение и анализ PDF...', 'loading');
-            editorEl.style.display = 'none';
-            try {
-                const buf = await file.arrayBuffer();
-                const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
-                let text = '';
-                for(let i=1; i<=pdf.numPages; i++) {
-                    const page = await pdf.getPage(i);
-                    const content = await page.getTextContent();
-                    text += content.items.map(x => x.str).join(' ') + '\n';
-                }
-                extracted = parseText(text);
-                renderForm(extracted);
-                showStatus('✅ Данные успешно извлечены. Проверьте и скачайте анкету.', 'success');
-                editorEl.style.display = 'block';
-            } catch(e) {
-                console.error(e);
-                showStatus('❌ Ошибка обработки файла: ' + e.message, 'error');
-            }
-        }
-
-        function parseText(text) {
-            const clean = t => t ? t.replace(/\s+/g,' ').trim() : 'нет';
-            // Базовые регулярки под стандартную выписку ФНС
-            const get = (regex) => { const m = text.match(regex); return m ? clean(m[1]) : 'нет'; }
+        try {
+            const { Document, Packer, Paragraph, TextRun, AlignmentType, HeadingLevel, SectionType, PageBreak, BorderStyle, Table, TableRow, TableCell, WidthType, VerticalAlign } = docx;
             
-            return {
-                fullName: get(/ПОЛНОЕ\s+ФИРМЕННОЕ\s+НАИМЕНОВАНИЕ\s+НА\s+РУССКОМ\s+ЯЗЫКЕ\s*([\s\S]{10,200}?)(?=СОКРАЩЕННОЕ|ИНН|ОГРН|$)/i) || 'нет',
-                shortName: get(/СОКРАЩЕННОЕ\s+ФИРМЕННОЕ\s+НАИМЕНОВАНИЕ\s+НА\s+РУССКОМ\s+ЯЗЫКЕ\s*([\s\S]{5,100}?)(?=ОПФ|ИНН|ОГРН|$)/i) || 'нет',
-                inn: get(/ИНН\s*[:\(]?\s*(\d{10,12})/i) || 'нет',
-                ogrn: get(/ОГРН\s*[:\(]?\s*(\d{13,15})/i) || 'нет',
-                kpp: get(/КПП\s*[:\(]?\s*(\d{9})/i) || 'нет',
-                regDate: get(/(\d{2}\.\d{2}\.\d{4})/),
-                address: get(/АДРЕС\s*\(МЕСТОНАХОЖДЕНИЕ\)\s*([\s\S]{10,300}?)(?=ОГРН|ИНН|СТАТУС|ОКВЭД|$)/i) || 'нет',
-                okvedMain: get(/ОСНОВНОЙ\s+ВИД\s+ДЕЯТЕЛЬНОСТИ\s*([\s\S]{5,200}?)(?=ДОПОЛНИТЕЛЬНЫЕ|СВЕДЕНИЯ|$)/i) || 'нет',
-                okvedAdd: get(/ДОПОЛНИТЕЛЬНЫЕ\s+ВИДЫ\s+ДЕЯТЕЛЬНОСТИ\s*([\s\S]{10,500}?)(?=СВЕДЕНИЯ|УЧРЕДИТЕЛЬ|ЛИЦО|$)/i) || 'нет',
-                capital: get(/РАЗМЕР\s+УСТАВНОГО\s+КАПИТАЛА\s*[\s\S]*?(\d[\d\s.,]+)\s*руб/i) || 'нет',
-                director: get(/ЛИЦО,?\s*ИМЕЮЩЕЕ\s+ПРАВО\s+ДЕЙСТВОВАТЬ\s+БЕЗ\s+ДОВЕРЕННОСТИ\s*([\s\S]{10,150}?)(?=УЧРЕДИТЕЛЬ|АДРЕС|ОКВЭД|ЛИЦА|$)/i) || 'нет',
-                opf: /(Общество\s+с\s+ограниченной\s+ответственностью|Акционерное\s+общество|Публичное\s+акционерное\s+общество)/i.exec(text)?.[1] || 'Общество с ограниченной ответственностью'
-            };
-        }
-
-        function renderForm(data) {
-            fieldsContainer.innerHTML = '';
-            const fields = [
-                {key:'fullName', label:'Полное наименование'}, {key:'shortName', label:'Сокращённое наименование'},
-                {key:'opf', label:'Организационно-правовая форма'}, {key:'inn', label:'ИНН'},
-                {key:'ogrn', label:'ОГРН'}, {key:'kpp', label:'КПП'},
-                {key:'regDate', label:'Дата регистрации'}, {key:'address', label:'Юридический адрес'},
-                {key:'okvedMain', label:'Основной ОКВЭД'}, {key:'capital', label:'Уставный капитал'},
-                {key:'director', label:'Руководитель (ЕИО)'}
-            ];
-            fields.forEach(f => {
-                const div = document.createElement('div'); div.className = 'field';
-                div.innerHTML = `<label>${f.label}</label><input type="text" id="inp_${f.key}" value="${data[f.key] === 'нет' ? '' : data[f.key]}">`;
-                fieldsContainer.appendChild(div);
-            });
-        }
-
-        async function generateDocx() {
-            const btn = document.getElementById('downloadBtn');
-            btn.disabled = true; btn.textContent = '⏳ Формирование файла...';
+            // Helper functions
+            const b = (t, sz=12) => new TextRun({ text: String(t||''), bold: true, size: sz*2, font: 'Times New Roman' });
+            const n = (t, sz=12) => new TextRun({ text: String(t||''), size: sz*2, font: 'Times New Roman' });
+            const u = (t, sz=12) => new TextRun({ text: String(t||'____________________'), underline: {}, size: sz*2, font: 'Times New Roman' });
+            const p = (children, opts={}) => new Paragraph({ children, spacing: { after: 80, before: 40 }, ...opts });
+            const pSmall = (children) => new Paragraph({ children, spacing: { after: 40 } });
+            const empty = () => new Paragraph({ text: '', spacing: { after: 40 } });
+            const sectionHeader = (text) => p([b(text, 13)], { alignment: AlignmentType.CENTER, spacing: { before: 200, after: 100 } });
+            const itemHeader = (num, text) => p([b(`${num}. ${text}`)], { spacing: { before: 100, after: 20 } });
             
-            // Собираем актуальные данные из инпутов
-            const data = {};
-            document.querySelectorAll('#fieldsContainer input').forEach(inp => {
-                data[inp.id.replace('inp_','')] = inp.value || 'нет';
-            });
+            const children = [];
 
-            try {
-                const { Document, Packer, Paragraph, TextRun, AlignmentType, HeadingLevel, SectionType, PageBreak, BorderStyle } = docx;
-                const b = (t, sz=12) => new TextRun({ text: t, bold: true, size: sz*2, font: 'Times New Roman' });
-                const n = (t, sz=12) => new TextRun({ text: t, size: sz*2, font: 'Times New Roman' });
-                const p = (children, opts={}) => new Paragraph({ children, spacing: { after: 80 }, ...opts });
-                const line = () => p([n('─'.repeat(70), 10)], { spacing: { after: 40 } });
+            // --- HEADER ---
+            children.push(p([b('The Bestbank', 14), n('   |   Корпоративный блок')], { alignment: AlignmentType.CENTER, spacing: { after: 100 } }));
+            children.push(p([b('АНКЕТА КЛИЕНТА - ЮРИДИЧЕСКОГО ЛИЦА РЕЗИДЕНТА', 13)], { alignment: AlignmentType.CENTER, spacing: { after: 50 } }));
+            children.push(p([n('НЕ ЯВЛЯЮЩЕГОСЯ КРЕДИТНОЙ ОРГАНИЗАЦИЕЙ', 12)], { alignment: AlignmentType.CENTER, spacing: { after: 150 } }));
 
-                const children = [
-                    p([b('АНКЕТА КЛИЕНТА - ЮРИДИЧЕСКОГО ЛИЦА РЕЗИДЕНТА, НЕ ЯВЛЯЮЩЕГОСЯ КРЕДИТНОЙ ОРГАНИЗАЦИЕЙ', 14)], { alignment: AlignmentType.CENTER, spacing: { after: 200 } }),
-                    p([b('Часть 1 - заполняется Представителем Клиента или работником Банка')], { spacing: { after: 100 } }),
-                    p([b('1. Наименование организации'), n('     ' + data.fullName)]),
-                    p([n('Сокращенное: ' + data.shortName)]),
-                    p([b('2. ИНН'), n('     ' + data.inn)]),
-                    p([b('3. ОГРН'), n('     ' + data.ogrn)]),
-                    p([b('4. Сведения о лицензии (не из ЕГРЮЛ)'), n('     ☐ Да  ☐ Нет')]),
-                    p([b('5. Органы управления'), n('     ЕИО: ' + data.director)]),
-                    p([n('6. Выгодоприобретатель: ☐ Да ☐ Нет')]),
-                    p([b('7. Цели деловых отношений'), n('     ☐ РКО ☐ ДБО ☐ Кредитование ☐ ВЭД ☐ Иное')]),
-                    p([n('8. Финансовое положение: ☐ да ☐ нет')]),
-                    p([n('9. Деловая репутация: ☐ да ☐ нет')]),
-                    p([n('10. Источники средств: ☐ Собственные ☐ Заемные ☐ Иное')]),
-                    p([n('11. Сведения о представителях: по форме 1а')]),
-                    p([n('12. Бенефициарный владелец (кроме ЕИО): ☐ да ☐ нет')]),
-                    p([b('13. Налоговое резидентство'), n('     Резидент иностранного гос-ва: ☐ да ☐ нет')]),
-                    p([b('14. Контактная информация'), n('     Адрес: ' + data.address)]),
-                    line(),
-                    p([b('Часть 1а - Сведения о представителе (физ. лице)')], { spacing: { after: 100 } }),
-                    p([n('1. ФИО: ' + data.director)]),
-                    p([n('2-3. Дата/место рождения: _________')]),
-                    p([n('4. Гражданство: Россия')]),
-                    p([n('5. Адрес регистрации: ' + data.address)]),
-                    p([n('6. ИНН: _________  7. СНИЛС: _________')]),
-                    p([n('8-11. Паспортные данные и полномочия заполняются вручную')]),
-                    line(),
-                    p([b('Часть 2 - заполняется Представителем Клиента или работником Банка')], { spacing: { after: 100 } }),
-                    p([b('1. Наименование'), n('     ' + data.fullName)]),
-                    p([b('2. ОПФ'), n('     ' + data.opf)]),
-                    p([b('3. ИНН'), n('     ' + data.inn)]),
-                    p([b('4. КПП'), n('     ' + data.kpp)]),
-                    p([b('5. Гос. регистрация'), n('     Дата: ' + (data.regDate || 'нет') + ' | ОГРН: ' + data.ogrn)]),
-                    p([b('6. Адрес юр. лица'), n('     ' + data.address)]),
-                    p([b('7. Классификаторы'), n('     ОКПО: _________ | ОКВЭД осн: ' + data.okvedMain)]),
-                    p([n('     Доп. ОКВЭД: ' + data.okvedAdd)]),
-                    p([b('8. Лицензии (из ЕГРЮЛ)'), n('     номер: ______ дата: ______ кем: ______ срок: ______')]),
-                    p([b('9. Уставный капитал'), n('     ' + data.capital + ' руб.')]),
-                    p([b('10. Виды деятельности'), n('     103-ФЗ: ☐да ☐нет | 161-ФЗ: ☐да ☐нет | Лизинг/факторинг: ☐да ☐нет')]),
-                    p([b('11. ЕИО (без доверенности)'), n('     ' + data.director + ' | ИНН: ' + data.inn)]),
-                    p([b('12. Учредители (>25%)'), n('     Указать по данным выписки')]),
-                    p([n('Информация является полной и достоверной.')]),
-                    p([n('Подпись: _______________ / ' + data.director + ' /    Дата: «___» ______ 20__ г.')])
-                ];
+            // --- ЧАСТЬ 1 ---
+            children.push(sectionHeader('Часть 1 - заполняется Представителем Клиента или работником Банка'));
+            
+            // 1. Name
+            children.push(itemHeader('1', 'Наименование организации'));
+            children.push(p([n('Полное наименование на русском языке:'), n('   ' + (data.fullName || '________________________________________'))]));
+            children.push(p([n('Сокращенное наименование:'), n('   ' + (data.shortName || '________________________________________'))]));
+            children.push(p([n('Фирменное наименование (при наличии):'), u()]));
+            children.push(p([n('Наименование на иностранных языках:'), u()]));
 
-                const doc = new Document({ sections: [{ properties: {}, children }] });
-                const blob = await Packer.toBlob(doc);
-                saveAs(blob, `Анкета_${data.inn === 'нет' ? 'ЮЛ' : data.inn}.docx`);
-                btn.textContent = '✅ Файл скачан!';
-            } catch(e) {
-                console.error(e); btn.textContent = '❌ Ошибка генерации';
-            }
-            setTimeout(() => { btn.disabled = false; btn.textContent = '📥 Сформировать и скачать анкету (.docx)'; }, 3000);
+            // 2. INN
+            children.push(itemHeader('2', 'Идентификационный номер налогоплательщика (ИНН)'));
+            children.push(p([n('   ' + (data.inn || '____________________'))]));
+
+            // 3. OGRN
+            children.push(itemHeader('3', 'Основной государственный регистрационный номер (ОГРН)'));
+            children.push(p([n('   ' + (data.ogrn || '____________________'))]));
+
+            // 4. Licenses
+            children.push(itemHeader('4', 'Сведения о лицензии на право осуществления деятельности, не указанные в ЕГРЮЛ'));
+            children.push(p([n('   ☐ Да   ☐ Нет')]));
+            children.push(pSmall([n('(В случае "Да" укажите номер, дату, кем выдана, срок, виды деятельности)')]));
+            children.push(p([n('Сведения:'), u()]));
+
+            // 5. Management
+            children.push(itemHeader('5', 'Структура и персональный состав органов управления юридического лица'));
+            children.push(p([b('Высший орган:'), n('   ☐ Общее собрание участников   ☐ Единственный участник')]));
+            children.push(p([b('Единоличный исполнительный орган:'), n('   ☐ Генеральный директор   ☐ Директор   ☐ Иное')]));
+            children.push(p([n('ФИО руководителя:'), n('   ' + (data.director || '____________________'))]));
+            children.push(p([n('Принадлежность к ПДЛ:'), n('   ☐ да   ☐ нет')]));
+            children.push(p([n('Иные органы управления (Совет директоров и т.д.):'), u()]));
+
+            // 6. Beneficiaries
+            children.push(itemHeader('6', 'Клиент действует в пользу Выгодоприобретателя'));
+            children.push(p([n('   ☐ Да   ☐ Нет')]));
+            children.push(pSmall([n('(В случае "Да" представьте сведения по форме банка)')]));
+
+            // 7. Purpose
+            children.push(itemHeader('7', 'Сведения о целях установления и характере деловых отношений'));
+            children.push(p([n('7.1 Наличие сведений в открытых источниках:   ☐ да   ☐ нет')]));
+            children.push(p([n('7.2 Цели:   ☐ ДБО   ☐ РКО   ☐ Депозиты   ☐ Валютный контроль   ☐ Кредитование   ☐ ВЭД   ☐ Зарплатный проект   ☐ Иное')]));
+            children.push(p([n('7.3 Планируемые операции (наличные/ВЭД/налоги/зарплата):   ☐ да   ☐ нет')]));
+            children.push(p([n('7.4 Виды договоров:   ☐ Купли-продажи   ☐ Услуг   ☐ Работ   ☐ Аренды   ☐ Иное')]));
+
+            // 8-13. Other
+            children.push(itemHeader('8', 'Сведения о финансовом положении'));
+            children.push(p([n('   ☐ да   ☐ нет')]));
+            children.push(itemHeader('9', 'Наличие отзыва о деловой репутации'));
+            children.push(p([n('   ☐ да   ☐ нет')]));
+            children.push(itemHeader('10', 'Источники происхождения денежных средств'));
+            children.push(p([n('   ☐ Собственные   ☐ Заемные   ☐ Иное:'), u()]));
+            children.push(itemHeader('11', 'Сведения о представителях'));
+            children.push(p([n('   Представляются по форме части 1а')]));
+            children.push(itemHeader('12', 'Сведения о Бенефициарном владельце (кроме ЕИО)'));
+            children.push(p([n('   ☐ да   ☐ нет')]));
+            children.push(itemHeader('13', 'Сведения о налоговом резидентстве'));
+            children.push(p([n('   Резидент иностранного государства:   ☐ да   ☐ нет')]));
+            children.push(p([n('   Бенефициар (10%+) резидент ин. гос-ва:   ☐ да   ☐ нет')]));
+            children.push(p([n('   Финансовый институт (FATCA):   ☐ да   ☐ нет')]));
+
+            // 14. Contact
+            children.push(itemHeader('14', 'Контактная информация'));
+            children.push(p([n('Телефон/Факс:   ' + (data.phone || '____________________'))]));
+            children.push(p([n('Email:   ' + (data.email || '____________________'))]));
+            children.push(p([n('Почтовый адрес:   ' + (data.address || '____________________'))]));
+
+            children.push(p([n('Информация является полной и достоверной.')]));
+            children.push(p([n('Руководитель:   ' + (data.director || '____________________') + '   Действующий на основании: Устава')]));
+            children.push(p([n('Подпись: _______________    Дата: «___» ______ 20__ г.')]));
+
+            children.push(empty());
+            children.push(PageBreak);
+
+            // --- ЧАСТЬ 1а ---
+            children.push(sectionHeader('Часть 1а - СВЕДЕНИЯ О ПРЕДСТАВИТЕЛЕ (ФИЗИЧЕСКОЕ ЛИЦО)'));
+            children.push(p([n('1. Фамилия, имя, отчество:   ' + (data.director || '____________________'))]));
+            children.push(p([n('2. Дата рождения: ______   3. Место рождения: ______')]));
+            children.push(p([n('4. Гражданство: Россия')]));
+            children.push(p([n('5. Адрес регистрации:   ' + (data.address || '____________________'))]));
+            children.push(p([n('6. ИНН: ______   7. СНИЛС: ______')]));
+            children.push(p([n('8. Паспорт:   Серия ______ Номер ______   Выдан: ______   Код подразделения: ______')]));
+            children.push(p([n('10. Полномочия:   Устав / Доверенность   № ______ от ______')]));
+            children.push(p([n('11. Контактная информация:   ' + (data.phone || '____________________'))]));
+            children.push(p([n('Представитель:   ' + (data.director || '____________________') + '   Подпись: ______')]));
+
+            children.push(empty());
+            children.push(PageBreak);
+
+            // --- ЧАСТЬ 2 ---
+            children.push(sectionHeader('Часть 2 - заполняется Представителем Клиента или работником Банка'));
+            
+            children.push(p([b('1. Наименование'), n('   ' + (data.fullName || '____________________'))]));
+            children.push(p([b('2. ОПФ'), n('   ' + (data.opf || '____________________'))]));
+            children.push(p([b('3. ИНН'), n('   ' + (data.inn || '____________________'))]));
+            children.push(p([b('4. КПП'), n('   ' + (data.kpp || '____________________'))]));
+            children.push(p([b('5. Гос. регистрация')]));
+            children.push(p([n('   Дата: ' + (data.regDate || '______') + '   ОГРН: ' + (data.ogrn || '______'))]));
+            children.push(p([n('   Место: ' + (data.address || '____________________'))]));
+            children.push(p([b('6. Адрес юр. лица'), n('   ' + (data.address || '____________________'))]));
+            children.push(p([b('7. Коды')]));
+            children.push(p([n('   ОКПО: ______   ОКВЭД осн: ' + (data.okvedMain || '____________________'))]));
+            children.push(p([n('   ОКВЭД доп: ____________________')]));
+            children.push(p([b('8. Лицензии (из ЕГРЮЛ)'), n('   Номер: ______   Дата: ______   Кем: ______')]));
+            children.push(p([b('9. Уставный капитал'), n('   ' + (data.capital || '____________________') + ' руб.')]));
+            children.push(p([b('10. Виды деятельности')]));
+            children.push(p([n('   103-ФЗ: ☐ да ☐ нет   |   161-ФЗ: ☐ да ☐ нет   |   Лизинг/Факторинг: ☐ да ☐ нет')]));
+            children.push(p([b('11. ЕИО (без доверенности)'), n('   ' + (data.director || '____________________') + '   ИНН: ' + (data.inn || '______'))]));
+            children.push(p([b('12. Учредители (>25%)'), n('   Указать по данным выписки: ____________________')]));
+            
+            children.push(empty());
+            children.push(p([n('Информация является полной и достоверной.')]));
+            children.push(p([n('Подпись: _______________ / ' + (data.director || '____________________') + ' /    Дата: «___» ______ 20__ г.')]));
+
+            // --- DOC CREATION ---
+            const doc = new Document({ sections: [{ properties: {}, children }] });
+            const blob = await Packer.toBlob(doc);
+            saveAs(blob, `Анкета_TheBestbank_${data.inn || 'Client'}.docx`);
+            btn.textContent = '✅ Документ скачан!';
+        } catch(e) {
+            console.error(e); btn.textContent = '❌ Ошибка генерации';
         }
-    </script>
+        setTimeout(() => { btn.disabled = false; btn.textContent = '📥 Скачать заполненную анкету (.docx)'; }, 3000);
+    }
+</script>
 </body>
 </html>
